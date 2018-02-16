@@ -21,6 +21,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
+import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.loader.parser.BigDecimalParser;
 import com.datastax.loader.parser.BigIntegerParser;
@@ -41,6 +42,7 @@ import com.datastax.loader.parser.Parser;
 import com.datastax.loader.parser.SetParser;
 import com.datastax.loader.parser.ShortParser;
 import com.datastax.loader.parser.StringParser;
+import com.datastax.loader.parser.UDTParser;
 import com.datastax.loader.parser.UUIDParser;
 
 import java.text.ParseException;
@@ -282,8 +284,15 @@ public class CqlDelimParser {
                     throw new ParseException("Collection data type not recognized (" 
                                              + sb.datatype + ")", i);
                 }
-            }
-            else {
+            } else if (sb.datatype == DataType.Name.UDT) {
+                UserType ut = (UserType) dt;
+                List<Parser> fts = new ArrayList<>();
+                for (String field : ut.getFieldNames()) {
+                    fts.add(pmap.get(ut.getFieldType(field).getName()));
+                }
+                sb.parser = new UDTParser(fts, ut, ',', '{', '}', ':');
+
+            } else {
                 sb.parser = pmap.get(sb.datatype);
                 if (null == sb.parser) {
                     throw new ParseException("Column data type not recognized (" + sb.datatype + ")", i);
